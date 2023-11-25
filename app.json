@@ -1,0 +1,18 @@
+{
+    "name": "斗地主",
+    "author": "地窖上的松",
+    "namespace": "doudizhu",
+    "info": "斗地主",
+    "priority": 30000,
+    "svn": 1,
+    "version": "0.1.0",
+    "compatible_svn": 100,
+    "message_mode": "olivos_string",
+    "support": [
+        {
+            "sdk": "all",
+            "platform": "all",
+            "model": "all"
+        }
+    ]
+}
