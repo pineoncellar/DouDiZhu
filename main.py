@@ -21,7 +21,6 @@ import OlivOS
 import argparse
 import dataFiles as df
 import gameData as gd
-import gameInit as gi
 import gamePlay as gp
 
 
