@@ -96,15 +96,19 @@ class gameData:
 
         self.host_cards = card_pile.draw_host_card()
         self.host_player = player1.uid
-        self.process = 0
         self.next_player = player1.uid
+        self.process = 0
 
         # send cards message
         sendCards(player1)
         sendCards(player2)
         sendCards(player3)
 
-    def setHost(name: str):
+    def setHost(uid, gid):
+        player_data = df.getUserData(uid, gid)
+        pass
+
+    def nextTurn():
         pass
 
 
@@ -122,6 +126,9 @@ class playerData:
 
     # sort cards
     def sort(self):
+        pass
+
+    def check_cards(self, cards: list):
         pass
 
 

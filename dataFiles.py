@@ -39,7 +39,7 @@ def resetGroupData(group_id):
     saveClass(default_game_data, name)
 
 
-def getUserData(uid, gid):
+def getUserData(uid, gid) -> gd.playerData:
     name = "g" + gid + "_u" + str(uid)
     user_data = loadClass(name)
     return user_data
@@ -47,7 +47,7 @@ def getUserData(uid, gid):
 
 def setUserData(Class: gd.playerData, uid, gid):
     name = "g" + gid + "_u" + str(uid)
-    saveClass(default_game_data, name)
+    saveClass(Class, name)
 
 
 def saveClass(Class: "gd.gameData | gd.playerData", name: str):

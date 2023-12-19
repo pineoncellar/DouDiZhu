@@ -76,15 +76,8 @@ def unity_reply(plugin_event, Proc):
 
     elif prefix == "加入游戏":
         group_data = df.getGroupData(gid)
-        if not group_data.switch:
+        if gp.exclude_before_game(0, group_data, uid, OlivOS.API.Event):
             return
-        if len(group_data.player_list) == 3:
-            eventReply("这里已经满人了")
-            return
-        for player in group_data.player_list:
-            if uid == player[0]:
-                eventReply("你已经在玩家列表中了喔")
-                return
 
         group_data.player_list.append([uid, name])
         player_list = ""
@@ -103,19 +96,12 @@ def unity_reply(plugin_event, Proc):
 
     elif prefix == "开始游戏":
         group_data = df.getGroupData(gid)
-        if not group_data.switch:
-            return
-        if len(group_data.player_list) < 3:
-            player_list = ""
-            for player in group_data.player_list:
-                player_list = "," + player[1]
-                player_list = player_list[1:]
-            eventReply(f"人还不够呢，快去摇人\n当前玩家列表:{player_list}")
+        if gp.exclude_before_game(1, group_data, uid, OlivOS.API.Event):
             return
 
         group_data.gameInit(gid)
-        hont_card_message = "地主牌为" + " ".join(group_data.host_cards)
-        eventReply(hont_card_message)
+        host_card_message = "地主牌为" + " ".join(group_data.host_cards)
+        eventReply(host_card_message)
         player_list_message = (
             "本轮游戏顺序为 "
             + group_data.player_list[0][1]
@@ -129,51 +115,95 @@ def unity_reply(plugin_event, Proc):
 
     elif prefix == "抢地主":
         group_data = df.getGroupData(gid)
-        player_data = df.getUserData(uid, gid)
-        if not group_data.switch:
-            return
-        if group_data.process != 0:
+        if gp.exclude(group_data, uid, OlivOS.API.Event):
             return
 
         for player in group_data.player_list:
             if uid == player[0]:
-                if name == group_data.next_player:
-                    group_data.setHost(name)
+                if uid == group_data.next_player:
+                    group_data.setHost(uid)
                     eventReply(f"{name}成为了地主! ")
                 else:
                     eventReply("现在是%s的回合喔", group_data.next_player)
 
     elif prefix == "不抢":
         group_data = df.getGroupData(gid)
-        if not group_data.switch:
-            return
-        if group_data.process != 0:
+        if gp.exclude(group_data, uid, OlivOS.API.Event):
             return
 
-        for player in group_data.player_list:
-            if uid == player[0]:
-                if name == group_data.next_player:
-                    group_data.nextTurn(group_data, name)
-                    eventReply(f"{name}不要地主啦")
-                else:
-                    eventReply("现在是%s的回合喔", group_data.next_player)
+        group_data.nextTurn(group_data, name)
+        eventReply(f"{name}不要地主啦")
 
     elif prefix == "查看手牌":
         group_data = df.getGroupData(gid)
-        player_data = df.getUserData(uid, gid)
         if not group_data.switch:
             return
+        for player in group_data.player_list:
+            if uid == player[0]:
+                pass
+            else:
+                eventReply("ni bu zai you xi zhong", plugin_event)
+                return
         if group_data.process == None:
             eventReply("游戏都还没开始呢")
             return
 
+        player_data = df.getUserData(uid, gid)
         gd.sendCards(player_data)
 
     elif prefix == "出牌":
-        return
+        group_data = df.getGroupData(gid)
+        if gp.exclude(group_data, uid, OlivOS.API.Event):
+            return
+        player_data = df.getUserData(uid, gid)
+
+        player_cards = raw_msg[3:].split(" ")
+        if not player_data.check_cards(player_cards):
+            eventReply("ni mei you zhe xie pai")
+
+        stat, card_type = gp.cmp_cards(player_cards, group_data.last_cards)
+        if stat:
+            group_data.last_cards = player_cards
+            player_data.sort(player_cards)
+            eventReply(f"{name}chu pai : {card_type} {raw_msg[3:]}")
+
+            if len(player_data.cards) == 0:
+                pass
+
+            group_data.nextTurn()
+
+        else:
+            eventReply("play fail")  # play fail
 
     elif prefix == "要不起":
-        return
+        group_data = df.getGroupData(gid)
+        if gp.exclude(group_data, uid, OlivOS.API.Event):
+            return
+
+        group_data.nextTurn(group_data, name)
+        eventReply(f"{name}bu yao")
+
+    elif prefix == "qi yong dou di zhu":
+        group_data = df.getGroupData(gid)
+        if group_data.switch:
+            eventReply("wei jin yong")
+            return
+
+        df.resetGroupData(gid)
+        eventReply("yi qi yong")
+
+    elif prefix == "jin yong dou di zhu":
+        group_data = df.getGroupData(gid)
+        if not group_data.switch:
+            eventReply("wei qi yong")
+            return
+
+        group_data.switch = False
+        df.setGroupData(group_data, gid)
+        eventReply("yi jin yong")
+
+    elif prefix == "dou di zhu tong ji":
+        pass
 
 
 def eventReply(
@@ -190,9 +220,3 @@ def eventReply(
     if msgid != None:
         res = "[OP:reply,id=%s]%s" % (str(msgid), message)
     plugin_event.reply(res)
-
-
-def getPlayerNumber(group_data: dict, name):
-    for i in range(0, 3):
-        if group_data.player_list[i] == name:
-            return i
