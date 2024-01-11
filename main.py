@@ -72,7 +72,7 @@ def unity_reply(plugin_event, Proc):
 
     prefix = re.match("^\S+", raw_msg)
     if prefix == "斗地主帮助":
-        eventReply(help_msg)
+        replyMsg(help_msg)
 
     elif prefix == "加入游戏":
         group_data = df.getGroupData(gid)
@@ -84,7 +84,7 @@ def unity_reply(plugin_event, Proc):
         for player in group_data.player_list:
             player_list = "," + player[1]
         player_list = player_list[1:]
-        eventReply(f"{name}加入游戏，当前玩家列表:{player_list}")
+        replyMsg(f"{name}加入游戏，当前玩家列表:{player_list}")
 
     elif prefix == "退出游戏":
         group_data = df.getGroupData(gid)
@@ -92,7 +92,7 @@ def unity_reply(plugin_event, Proc):
             return
 
         df.resetGroupData(gid)
-        eventReply(f"{name}把桌子掀了, 游戏列表清空")
+        replyMsg(f"{name}把桌子掀了, 游戏列表清空")
 
     elif prefix == "开始游戏":
         group_data = df.getGroupData(gid)
@@ -101,7 +101,7 @@ def unity_reply(plugin_event, Proc):
 
         group_data.gameInit(gid)
         host_card_message = "地主牌为" + " ".join(group_data.host_cards)
-        eventReply(host_card_message)
+        replyMsg(host_card_message)
         player_list_message = (
             "本轮游戏顺序为 "
             + group_data.player_list[0][1]
@@ -111,7 +111,7 @@ def unity_reply(plugin_event, Proc):
             + group_data.player_list[2][1]
             + " 请抢地主"
         )
-        eventReply(player_list_message)
+        replyMsg(player_list_message)
 
     elif prefix == "抢地主":
         group_data = df.getGroupData(gid)
@@ -122,9 +122,9 @@ def unity_reply(plugin_event, Proc):
             if uid == player[0]:
                 if uid == group_data.next_player:
                     group_data.setHost(uid)
-                    eventReply(f"{name}成为了地主! ")
+                    replyMsg(f"{name}成为了地主! ")
                 else:
-                    eventReply("现在是%s的回合喔", group_data.next_player)
+                    replyMsg("现在是%s的回合喔", group_data.next_player)
 
     elif prefix == "不抢":
         group_data = df.getGroupData(gid)
@@ -132,7 +132,7 @@ def unity_reply(plugin_event, Proc):
             return
 
         group_data.nextTurn(group_data, name)
-        eventReply(f"{name}不要地主啦")
+        replyMsg(f"{name}不要地主啦")
 
     elif prefix == "查看手牌":
         group_data = df.getGroupData(gid)
@@ -142,10 +142,10 @@ def unity_reply(plugin_event, Proc):
             if uid == player[0]:
                 pass
             else:
-                eventReply("ni bu zai you xi zhong", plugin_event)
+                replyMsg("ni bu zai you xi zhong", plugin_event)
                 return
         if group_data.process == None:
-            eventReply("游戏都还没开始呢")
+            replyMsg("游戏都还没开始呢")
             return
 
         player_data = df.getUserData(uid, gid)
@@ -159,13 +159,13 @@ def unity_reply(plugin_event, Proc):
 
         player_cards = raw_msg[3:].split(" ")
         if not player_data.check_cards(player_cards):
-            eventReply("ni mei you zhe xie pai")
+            replyMsg("ni mei you zhe xie pai")
 
         stat, card_type = gp.cmp_cards(player_cards, group_data.last_cards)
         if stat:
             group_data.last_cards = player_cards
             player_data.sort(player_cards)
-            eventReply(f"{name}chu pai : {card_type} {raw_msg[3:]}")
+            replyMsg(f"{name}chu pai : {card_type} {raw_msg[3:]}")
 
             if len(player_data.cards) == 0:
                 pass
@@ -173,7 +173,7 @@ def unity_reply(plugin_event, Proc):
             group_data.nextTurn()
 
         else:
-            eventReply("play fail")  # play fail
+            replyMsg("play fail")  # play fail
 
     elif prefix == "要不起":
         group_data = df.getGroupData(gid)
@@ -181,42 +181,35 @@ def unity_reply(plugin_event, Proc):
             return
 
         group_data.nextTurn(group_data, name)
-        eventReply(f"{name}bu yao")
+        replyMsg(f"{name}bu yao")
 
     elif prefix == "qi yong dou di zhu":
         group_data = df.getGroupData(gid)
         if group_data.switch:
-            eventReply("wei jin yong")
+            replyMsg("wei jin yong")
             return
 
         df.resetGroupData(gid)
-        eventReply("yi qi yong")
+        replyMsg("yi qi yong")
 
     elif prefix == "jin yong dou di zhu":
         group_data = df.getGroupData(gid)
         if not group_data.switch:
-            eventReply("wei qi yong")
+            replyMsg("wei qi yong")
             return
 
         group_data.switch = False
         df.setGroupData(group_data, gid)
-        eventReply("yi jin yong")
+        replyMsg("yi jin yong")
 
     elif prefix == "dou di zhu tong ji":
         pass
 
 
-def eventReply(
+# 快捷回复消息
+def replyMsg(
     message: str,
     plugin_event=OlivOS.API.Event,
-    msgid: "str|None" = None,
 ):
-    if "qq" == plugin_event.platform["platform"]:
-        try:
-            msgid = plugin_event.data.message_id  # type: ignore
-        except:
-            pass
     res = message
-    if msgid != None:
-        res = "[OP:reply,id=%s]%s" % (str(msgid), message)
     plugin_event.reply(res)
