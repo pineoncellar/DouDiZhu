@@ -12,9 +12,10 @@
 @Desc      :   游戏数据类的定义, 与游戏初始化函数
 """
 
-import random
 import OlivOS
 import DouDiZhu.dataFiles as df
+
+import random
 
 ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]  # cards
 cards_pile = []

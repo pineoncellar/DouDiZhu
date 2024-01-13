@@ -12,10 +12,11 @@
 @Desc      :   游戏数据存取与分析
 """
 
+import DouDiZhu.gameData as gd
+
 import os
 import pickle
 import json
-import DouDiZhu.gameData as gd
 
 
 default_game_data = gd.gameData()
