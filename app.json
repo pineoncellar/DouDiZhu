@@ -1,7 +1,7 @@
 {
     "name": "斗地主",
     "author": "地窖上的松",
-    "namespace": "doudizhu",
+    "namespace": "DouDiZhu",
     "info": "斗地主",
     "priority": 30000,
     "svn": 1,

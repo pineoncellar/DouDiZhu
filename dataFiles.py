@@ -14,7 +14,8 @@
 
 import os
 import pickle
-import gameData as gd
+import json
+import DouDiZhu.gameData as gd
 
 
 default_game_data = gd.gameData()
@@ -22,8 +23,15 @@ default_game_data = gd.gameData()
 
 def getGroupData(group_id) -> gd.gameData:
     # 不存在则新建
-    name = "Gdata" + str(group_id)
+    name = "g" + str(group_id)
     if not os.access("plugin/data/douDiZhu/data/data_" + name + ".bin", os.R_OK):
+        """
+        data = ""
+        with open(
+            "plugin/data/douDiZhu/data/data_" + name + ".bin", "w", encoding="utf-8"
+        ) as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        """
         resetGroupData(group_id)
     game_data = loadClass(name)
     return game_data
@@ -36,7 +44,7 @@ def setGroupData(Class: gd.gameData, group_id):
 
 def resetGroupData(group_id):
     name = "g" + str(group_id)
-    saveClass(default_game_data, name)
+    saveClass(gd.gameData(), name)
 
 
 def getUserData(uid, gid) -> gd.playerData:
@@ -50,8 +58,8 @@ def setUserData(Class: gd.playerData, uid, gid):
     saveClass(Class, name)
 
 
-def saveClass(Class: "gd.gameData | gd.playerData", name: str):
-    fBin = open("plugin/data/douDiZhu/data/data_" + name + ".bin", "ab")
+def saveClass(Class: gd.gameData | gd.playerData, name: str):
+    fBin = open("plugin/data/douDiZhu/data/data_" + name + ".bin", "wb+")
     pickle.dump(Class, fBin)
     fBin.close()
 

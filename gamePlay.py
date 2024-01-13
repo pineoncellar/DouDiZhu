@@ -12,33 +12,33 @@
 @Desc      :   游戏进行阶段
 """
 
-import dataFiles as df
+import DouDiZhu.dataFiles as df
 import OlivOS
-import gameData as gd
-import main
+import DouDiZhu.gameData as gd
+import DouDiZhu.main as main
 
 
 def exclude(
-    group_data: gd.gameData,
+    g_data: gd.gameData,
     uid,
     plugin_event: OlivOS.API.Event,
 ):
-    if group_data.process == 0:
-        if not group_data.switch:  # group switch
+    if g_data.process == 0:
+        if not g_data.switch:  # group switch
             return True
-        for player in group_data.player_list:  # check player list
+        for player in g_data.player_list:  # check player list
             if uid == player[0]:
                 break
         else:
-            main.replyMsg("ni bu zai you xi zhong", plugin_event)
+            plugin_event.reply("ni bu zai you xi zhong", plugin_event)
             return True
-        if uid == group_data.next_player:  # check next player
+        if uid == g_data.next_player:  # check next player
             pass
         else:
-            main.replyMsg("现在是" + group_data.next_player + "的回合喔", plugin_event)
+            plugin_event.reply("现在是" + g_data.next_player + "的回合喔", plugin_event)
             return True
 
-    elif group_data.process == 1:
+    elif g_data.process == 1:
         pass
 
     return False
@@ -46,35 +46,35 @@ def exclude(
 
 def exclude_before_game(
     case: int,  # 0-add 1-start
-    group_data: gd.gameData,
+    g_data: gd.gameData,
     uid,
     plugin_event: OlivOS.API.Event,
 ):
     if case == 0:
-        if not group_data.switch:
+        if len(g_data.player_list) == 3:
+            plugin_event.reply("这里已经满人了", plugin_event)
             return True
-        if len(group_data.player_list) == 3:
-            main.replyMsg("这里已经满人了", plugin_event)
+        if not g_data.switch:
             return True
-        for player in group_data.player_list:
+        for player in g_data.player_list:
             if uid == player[0]:
-                main.replyMsg("你已经在玩家列表中了喔", plugin_event)
+                plugin_event.reply("你已经在玩家列表中了喔", plugin_event)
                 return True
     elif case == 1:
-        if not group_data.switch:
+        if not g_data.switch:
             return True
-        for player in group_data.player_list:
+        for player in g_data.player_list:
             if uid == player[0]:
                 break
         else:
-            main.replyMsg("ni bu zai you xi zhong", plugin_event)
+            plugin_event.reply("ni bu zai you xi zhong", plugin_event)
             return True
-        if len(group_data.player_list) < 3:
+        if len(g_data.player_list) < 3:
             player_list = ""
-            for player in group_data.player_list:
+            for player in g_data.player_list:
                 player_list = "," + player[1]
                 player_list = player_list[1:]
-            main.replyMsg(f"人还不够呢，快去摇人\n当前玩家列表:{player_list}", plugin_event)
+            plugin_event.reply(f"人还不够呢，快去摇人\n当前玩家列表:{player_list}", plugin_event)
             return True
     return False
 
