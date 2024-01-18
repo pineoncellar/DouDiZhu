@@ -26,13 +26,6 @@ def getGroupData(group_id) -> gd.gameData:
     # 不存在则新建
     name = "g" + str(group_id)
     if not os.access("plugin/data/douDiZhu/data/data_" + name + ".bin", os.R_OK):
-        """
-        data = ""
-        with open(
-            "plugin/data/douDiZhu/data/data_" + name + ".bin", "w", encoding="utf-8"
-        ) as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        """
         resetGroupData(group_id)
     game_data = loadClass(name)
     return game_data

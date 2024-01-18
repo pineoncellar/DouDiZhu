@@ -9,11 +9,12 @@
 @Author    :   地窖上的松
 @Contact   :   dijsds@163.com
 @License   :   CC BY-NC-SA 4.0
-@Desc      :   游戏数据类的定义, 与游戏初始化函数
+@Desc      :   游戏数据类与操作
 """
 
 import OlivOS
 import DouDiZhu.dataFiles as df
+import DouDiZhu.gamePlay as gp
 
 import random
 
@@ -54,7 +55,7 @@ class gameData:
     def __init__(
         self,
         switch: bool = True,
-        player_list: list = [],  # 存放列表的列表
+        player_list: list = [],  # [uid,name]
         host_player=None,
         process: "int|None" = None,
         next_player=None,
@@ -71,7 +72,7 @@ class gameData:
         self.last_player = last_player
         self.host_cards = host_cards
 
-    def gameInit(self, gid):
+    def gameInit(self, gid, plugin_event):
         card_pile = CardPile()
         card_pile.shuffle()
 
@@ -96,21 +97,31 @@ class gameData:
         df.setUserData(player3, player3.uid, gid)
 
         self.host_cards = card_pile.draw_host_card()
-        self.host_player = player1.uid
+        self.last_player = player3.uid
         self.next_player = player1.uid
         self.process = 0
 
         # send cards message
-        sendCards(player1)
-        sendCards(player2)
-        sendCards(player3)
+        gp.sendCards(player1, plugin_event)
+        gp.sendCards(player2, plugin_event)
+        gp.sendCards(player3, plugin_event)
 
-    def setHost(uid, gid):
+    def setHost(self, uid, gid):
         player_data = df.getUserData(uid, gid)
-        pass
+        player_data.incCards(self.host_cards)
+        self.host_player = uid
+        self.next_player = uid
+        self.process = 1
 
-    def nextTurn():
-        pass
+    def _pass(self):
+        for player in self.player_list:
+            if self.next_player == player[0]:
+                i = self.player_list.index(player)  # get index
+                if i == 2:
+                    self.next_player = self.player_list[0][0]
+                else:
+                    self.next_player = self.player_list[i + 1][0]
+                break
 
 
 class playerData:
@@ -119,22 +130,51 @@ class playerData:
         self.name = name
         self.cards = cards
 
-    def play(self, cards: list):
-        pass
+    # decrease cards
+    def decCards(self, cards: list):
+        for card in cards:
+            self.cards.remove(card)
+        self.sort()
 
-    def getCards(self, cards: list):
-        pass
+    # increase cards
+    def incCards(self, cards: list):
+        for card in cards:
+            self.cards.append(card)
+        self.sort()
 
     # sort cards
     def sort(self):
-        pass
+        self.cards = sorted(self.cards, key=getCardValue)
 
+    # check if player has these cards
     def check_cards(self, cards: list):
-        pass
+        tmp_card_list = self.cards
+
+        for card in cards:
+            if card in tmp_card_list:
+                tmp_card_list.remove(card)
+            else:
+                return False
+        return True
 
 
-def sendCards(player_data: playerData, plugin_event=OlivOS.API.Event):
-    cards = player_data.cards
-    message = "你的手牌是: " + " ".join(cards)
-    uid = player_data.uid
-    plugin_event.send("private", uid, message)
+def getCardValue(card: str):
+    value = 0
+    if card in ["3", "4", "5", "6", "7", "8", "9", "10"]:
+        value = int(card) - 2
+    elif card == "J":
+        value = 9
+    elif card == "Q":
+        value = 10
+    elif card == "K":
+        value = 11
+    elif card == "A":
+        value = 12
+    elif card == "2":
+        value = 13
+    elif card == "X":
+        value = 13
+    elif card == "D":
+        value = 13
+
+    return value

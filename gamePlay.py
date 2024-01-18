@@ -15,7 +15,6 @@
 import OlivOS
 import DouDiZhu.dataFiles as df
 import DouDiZhu.gameData as gd
-import DouDiZhu.main as main
 
 
 def exclude(
@@ -23,23 +22,19 @@ def exclude(
     uid,
     plugin_event: OlivOS.API.Event,
 ):
-    if g_data.process == 0:
-        if not g_data.switch:  # group switch
-            return True
-        for player in g_data.player_list:  # check player list
-            if uid == player[0]:
-                break
-        else:
-            plugin_event.reply("ni bu zai you xi zhong", plugin_event)
-            return True
-        if uid == g_data.next_player:  # check next player
-            pass
-        else:
-            plugin_event.reply("现在是" + g_data.next_player + "的回合喔", plugin_event)
-            return True
-
-    elif g_data.process == 1:
+    if not g_data.switch:  # group switch
+        return True
+    for player in g_data.player_list:  # check player list
+        if uid == player[0]:
+            break
+    else:
+        plugin_event.reply("你不在游戏中")
+        return True
+    if uid == g_data.next_player:  # check next player
         pass
+    else:
+        plugin_event.reply("现在是" + g_data.next_player + "的回合喔")
+        return True
 
     return False
 
@@ -52,13 +47,13 @@ def exclude_before_game(
 ):
     if case == 0:
         if len(g_data.player_list) == 3:
-            plugin_event.reply("这里已经满人了", plugin_event)
+            plugin_event.reply("这里已经满人了")
             return True
         if not g_data.switch:
             return True
         for player in g_data.player_list:
             if uid == player[0]:
-                plugin_event.reply("你已经在玩家列表中了喔", plugin_event)
+                plugin_event.reply("你已经在玩家列表中了喔")
                 return True
     elif case == 1:
         if not g_data.switch:
@@ -67,14 +62,14 @@ def exclude_before_game(
             if uid == player[0]:
                 break
         else:
-            plugin_event.reply("ni bu zai you xi zhong", plugin_event)
+            plugin_event.reply("你不在游戏中")
             return True
         if len(g_data.player_list) < 3:
             player_list = ""
             for player in g_data.player_list:
-                player_list = "," + player[1]
+                player_list = player_list + "," + player[1]
                 player_list = player_list[1:]
-            plugin_event.reply(f"人还不够呢，快去摇人\n当前玩家列表:{player_list}", plugin_event)
+            plugin_event.reply(f"人还不够呢，快去摇人\n当前玩家列表:{player_list}")
             return True
     return False
 
@@ -285,3 +280,10 @@ def determine_cse(list: list) -> bool:
         if list[i] - list[i - 1] != 1:
             return False
     return True
+
+
+def sendCards(player_data: gd.playerData, plugin_event):
+    cards = player_data.cards
+    message = "你的手牌是: " + " ".join(cards)
+    uid = player_data.uid
+    plugin_event.send("private", uid, message)

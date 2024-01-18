@@ -104,8 +104,6 @@ def unity_reply(plugin_event, Proc):
             return
 
         group_data.gameInit(gid)
-        host_card_message = "地主牌为" + " ".join(group_data.host_cards)
-        plugin_event.reply(host_card_message)
         player_list_message = (
             "本轮游戏顺序为 "
             + group_data.player_list[0][1]
@@ -122,38 +120,44 @@ def unity_reply(plugin_event, Proc):
         if gp.exclude(group_data, uid, plugin_event):
             return
 
-        for player in group_data.player_list:
-            if uid == player[0]:
-                if uid == group_data.next_player:
-                    group_data.setHost(uid)
-                    plugin_event.reply(f"{name}成为了地主! ")
-                else:
-                    plugin_event.reply("现在是%s的回合喔", group_data.next_player)
+        group_data.setHost(uid, gid)
+        plugin_event.reply(f"{name}成为了地主! ")
+        host_card_message = "地主牌为" + " ".join(group_data.host_cards) + "\n请地主出牌"
+        plugin_event.reply(host_card_message)
 
     elif prefix == "不抢":
         group_data = df.getGroupData(gid)
         if gp.exclude(group_data, uid, plugin_event):
             return
 
-        group_data.nextTurn(group_data, name)
-        plugin_event.reply(f"{name}不要地主啦")
+        if group_data.next_player == group_data.last_player:  # all refused
+            plugin_event.reply(
+                "大家都放弃了地主，地主牌为" + " ".join(group_data.host_cards) + "\n正在重新洗牌"
+            )
+
+            group_data.gameInit(gid)
+            player_list_message = (
+                "本轮游戏顺序为 "
+                + group_data.player_list[0][1]
+                + ","
+                + group_data.player_list[1][1]
+                + ","
+                + group_data.player_list[2][1]
+                + " 请抢地主"
+            )
+            plugin_event.reply(player_list_message)
+
+        else:
+            group_data._pass()
+            plugin_event.reply(f"{name}不要地主啦")
 
     elif prefix == "查看手牌":
         group_data = df.getGroupData(gid)
-        if not group_data.switch:
-            return
-        for player in group_data.player_list:
-            if uid == player[0]:
-                pass
-            else:
-                plugin_event.reply("ni bu zai you xi zhong", plugin_event)
-                return
-        if group_data.process == None:
-            plugin_event.reply("游戏都还没开始呢")
+        if gp.exclude(group_data, uid, plugin_event):
             return
 
         player_data = df.getUserData(uid, gid)
-        gd.sendCards(player_data)
+        gp.sendCards(player_data)
 
     elif prefix == "出牌":
         group_data = df.getGroupData(gid)
@@ -185,9 +189,9 @@ def unity_reply(plugin_event, Proc):
             return
 
         group_data.nextTurn(group_data, name)
-        plugin_event.reply(f"{name}bu yao")
+        plugin_event.reply(f"{name}不要")
 
-    elif prefix == "qi yong dou di zhu":
+    elif prefix == "启用斗地主":
         group_data = df.getGroupData(gid)
         if group_data.switch:
             plugin_event.reply("wei jin yong")
@@ -196,7 +200,7 @@ def unity_reply(plugin_event, Proc):
         df.resetGroupData(gid)
         plugin_event.reply("yi qi yong")
 
-    elif prefix == "jin yong dou di zhu":
+    elif prefix == "禁用斗地主":
         group_data = df.getGroupData(gid)
         if not group_data.switch:
             plugin_event.reply("wei qi yong")
