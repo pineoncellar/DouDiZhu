@@ -16,6 +16,8 @@ import OlivOS
 import DouDiZhu.dataFiles as df
 import DouDiZhu.gameData as gd
 
+import random
+
 
 def exclude(
     g_data: gd.gameData,
@@ -30,10 +32,10 @@ def exclude(
     else:
         plugin_event.reply("你不在游戏中")
         return True
-    if uid == g_data.next_player:  # check next player
+    if uid == g_data.next_player[0]:  # check next player
         pass
     else:
-        plugin_event.reply("现在是" + g_data.next_player + "的回合喔")
+        plugin_event.reply("现在是" + g_data.next_player[1] + "的回合喔")
         return True
 
     return False
@@ -287,3 +289,53 @@ def sendCards(player_data: gd.playerData, plugin_event):
     message = "你的手牌是: " + " ".join(cards)
     uid = player_data.uid
     plugin_event.send("private", uid, message)
+
+
+def gameInit(group_data, gid, plugin_event):
+    card_pile = gd.CardPile()
+    card_pile.shuffle()
+
+    # mix the player list
+    random.shuffle(group_data.player_list)
+
+    # draw player cards
+    player1 = gd.playerData(
+        group_data.player_list[0][0],
+        group_data.player_list[0][1],
+        card_pile.draw_player_card(),
+    )
+    player1.sort()
+    df.setUserData(player1, player1.uid, gid)
+    player2 = gd.playerData(
+        group_data.player_list[1][0],
+        group_data.player_list[1][1],
+        card_pile.draw_player_card(),
+    )
+    player2.sort()
+    df.setUserData(player2, player2.uid, gid)
+    player3 = gd.playerData(
+        group_data.player_list[2][0],
+        group_data.player_list[2][1],
+        card_pile.draw_player_card(),
+    )
+    player3.sort()
+    df.setUserData(player3, player3.uid, gid)
+
+    group_data.host_cards = card_pile.draw_host_card()
+    group_data.last_player = [player3.uid, player3.name]
+    group_data.next_player = [player1.uid, player1.name]
+    group_data.process = 0
+
+    # send cards message
+    sendCards(player1, plugin_event)
+    sendCards(player2, plugin_event)
+    sendCards(player3, plugin_event)
+
+
+def setHost(group_data, uid, gid, plugin_event):
+    player_data = df.getUserData(uid, gid)
+    player_data.incCards(group_data.host_cards)
+    sendCards(player_data, plugin_event)
+    group_data.host_player = [uid, player_data.name]
+    group_data.next_player = [uid, player_data.name]
+    group_data.process = 1

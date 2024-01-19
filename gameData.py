@@ -12,9 +12,6 @@
 @Desc      :   游戏数据类与操作
 """
 
-import OlivOS
-import DouDiZhu.dataFiles as df
-import DouDiZhu.gamePlay as gp
 
 import random
 
@@ -72,55 +69,24 @@ class gameData:
         self.last_player = last_player
         self.host_cards = host_cards
 
-    def gameInit(self, gid, plugin_event):
-        card_pile = CardPile()
-        card_pile.shuffle()
-
-        # mix the player list
-        random.shuffle(self.player_list)
-
-        # draw player cards
-        player1 = playerData(
-            self.player_list[0][0], self.player_list[0][1], card_pile.draw_player_card()
-        )
-        player1.sort()
-        df.setUserData(player1, player1.uid, gid)
-        player2 = playerData(
-            self.player_list[1][0], self.player_list[1][1], card_pile.draw_player_card()
-        )
-        player2.sort()
-        df.setUserData(player2, player2.uid, gid)
-        player3 = playerData(
-            self.player_list[2][0], self.player_list[2][1], card_pile.draw_player_card()
-        )
-        player3.sort()
-        df.setUserData(player3, player3.uid, gid)
-
+    def gameDataInit(self, card_pile, player1, player3):
         self.host_cards = card_pile.draw_host_card()
-        self.last_player = player3.uid
-        self.next_player = player1.uid
+        self.last_player = [player3.uid, player3.name]
+        self.next_player = [player1.uid, player1.name]
         self.process = 0
 
-        # send cards message
-        gp.sendCards(player1, plugin_event)
-        gp.sendCards(player2, plugin_event)
-        gp.sendCards(player3, plugin_event)
-
-    def setHost(self, uid, gid):
-        player_data = df.getUserData(uid, gid)
-        player_data.incCards(self.host_cards)
-        self.host_player = uid
-        self.next_player = uid
+    def setHostData(self, uid, name):
+        self.host_player = [uid, name]
+        self.next_player = [uid, name]
         self.process = 1
 
     def _pass(self):
-        for player in self.player_list:
-            if self.next_player == player[0]:
-                i = self.player_list.index(player)  # get index
+        for i in range(0, 3):
+            if self.next_player == self.player_list[i]:
                 if i == 2:
-                    self.next_player = self.player_list[0][0]
+                    self.next_player = self.player_list[0]
                 else:
-                    self.next_player = self.player_list[i + 1][0]
+                    self.next_player = self.player_list[i + 1]
                 break
 
 
@@ -173,8 +139,8 @@ def getCardValue(card: str):
     elif card == "2":
         value = 13
     elif card == "X":
-        value = 13
+        value = 14
     elif card == "D":
-        value = 13
+        value = 15
 
     return value
