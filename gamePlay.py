@@ -76,17 +76,119 @@ def exclude_before_game(
     return False
 
 
-def cmp_cards(cards: list, last_cards: list):
-    pass
+def sendCards(player_data: gd.playerData, plugin_event):
+    cards = player_data.cards
+    message = "你的手牌是: " + " ".join(cards)
+    uid = player_data.uid
+    plugin_event.send("private", uid, message)
+
+
+def gameInit(group_data, gid, plugin_event):
+    card_pile = gd.CardPile()
+    card_pile.shuffle()
+
+    # mix the player list
+    random.shuffle(group_data.player_list)
+
+    # draw player cards
+    player1 = gd.playerData(
+        group_data.player_list[0][0],
+        group_data.player_list[0][1],
+        card_pile.draw_player_card(),
+    )
+    player1.sort()
+    df.setUserData(player1, player1.uid, gid)
+    player2 = gd.playerData(
+        group_data.player_list[1][0],
+        group_data.player_list[1][1],
+        card_pile.draw_player_card(),
+    )
+    player2.sort()
+    df.setUserData(player2, player2.uid, gid)
+    player3 = gd.playerData(
+        group_data.player_list[2][0],
+        group_data.player_list[2][1],
+        card_pile.draw_player_card(),
+    )
+    player3.sort()
+    df.setUserData(player3, player3.uid, gid)
+
+    group_data.host_cards = card_pile.draw_host_card()
+    group_data.last_player = [player3.uid, player3.name]
+    group_data.next_player = [player1.uid, player1.name]
+    group_data.process = 0
+
+    # send cards message
+    sendCards(player1, plugin_event)
+    sendCards(player2, plugin_event)
+    sendCards(player3, plugin_event)
+
+
+def setHost(group_data, uid, gid, plugin_event):
+    player_data = df.getUserData(uid, gid)
+    player_data.incCards(group_data.host_cards)
+    df.setUserData(player_data, uid, gid)
+
+    sendCards(player_data, plugin_event)
+    group_data.host_player = [uid, player_data.name]
+    group_data.next_player = [uid, player_data.name]
+    group_data.process = 1
+
+
+def cmp_cards(cards: list, last_cards: list) -> tuple:
+    card_type, card_value, card_count = analyze_cards(cards)
+    if card_type == 0:
+        return False, "未知牌型"
+    if last_cards:
+        l_card_type, l_card_value, l_card_count = analyze_cards(last_cards)
+        if card_type == 10:
+            if l_card_count == 10:
+                if not (card_value > l_card_value):
+                    return False, "所出的牌并没有比上家的大"
+        else:
+            if not (card_type == l_card_type):
+                return False, "牌型不匹配"
+            if not (card_value > l_card_value):
+                return False, "所出的牌并没有比上家的大"
+            if card_count != 0:
+                if not (card_count == l_card_count):
+                    return False, "牌型不匹配"
+
+    if card_type == 12:
+        card_type = 11
+    if card_type == 10 and card_value == 16:
+        card_type = 12
+    card_type_list = [
+        "一张",
+        "一对",
+        "顺子",
+        "连对",
+        "三张",
+        "三带一",
+        "三带二",
+        "三顺",
+        "四带二",
+        "炸弹",
+        "飞机",
+        "王炸",
+    ]
+    return True, card_type_list[card_type - 1]
 
 
 def game_end(
     group_data,
+    player_data,
     plugin_event: OlivOS.API.Event,
 ):
-    pass
+    end_speech = ""
+    if player_data.uid == group_data.host_player[0]:
+        end_speech = "游戏结束，地主胜利"
+    else:
+        end_speech = "游戏结束，农民胜利"
+    plugin_event.reply(end_speech)
 
 
+ranks = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2", "X", "D"]
 """
 分析卡牌需要分析出三个数据：牌型、主值、次数
 9种牌型: 
@@ -95,7 +197,7 @@ def game_end(
 炸弹包含王炸，三顺即不带翅膀的飞机，小飞机即每三张带一张单牌的。
 
 主值：
-单张，对子，三张，炸弹的主值即为卡牌数值， 1 - 13 代表 A - K, **炸弹主值14代表王炸**
+单张，对子，三张，炸弹的主值即为卡牌数值, 3 - 13 代表 3 - K, 14 - 15 代表 A - 2, 炸弹主值16代表王炸, 单张主值16, 17代表小王和大王
 三带一，三带二，四带二的主值为 **三或四张相同牌的数值**
 顺子，连对，飞机的主值为 **连续的牌中最大的数值**
 
@@ -270,7 +372,7 @@ def analyze_cards(cards: list) -> tuple:
 
     # convert str to int
     if isinstance(card_value, str):
-        card_value = gd.ranks.index(card_value) + 1
+        card_value = ranks.index(card_value) + 3
 
     return card_type, card_value, card_count
 
@@ -282,60 +384,3 @@ def determine_cse(list: list) -> bool:
         if list[i] - list[i - 1] != 1:
             return False
     return True
-
-
-def sendCards(player_data: gd.playerData, plugin_event):
-    cards = player_data.cards
-    message = "你的手牌是: " + " ".join(cards)
-    uid = player_data.uid
-    plugin_event.send("private", uid, message)
-
-
-def gameInit(group_data, gid, plugin_event):
-    card_pile = gd.CardPile()
-    card_pile.shuffle()
-
-    # mix the player list
-    random.shuffle(group_data.player_list)
-
-    # draw player cards
-    player1 = gd.playerData(
-        group_data.player_list[0][0],
-        group_data.player_list[0][1],
-        card_pile.draw_player_card(),
-    )
-    player1.sort()
-    df.setUserData(player1, player1.uid, gid)
-    player2 = gd.playerData(
-        group_data.player_list[1][0],
-        group_data.player_list[1][1],
-        card_pile.draw_player_card(),
-    )
-    player2.sort()
-    df.setUserData(player2, player2.uid, gid)
-    player3 = gd.playerData(
-        group_data.player_list[2][0],
-        group_data.player_list[2][1],
-        card_pile.draw_player_card(),
-    )
-    player3.sort()
-    df.setUserData(player3, player3.uid, gid)
-
-    group_data.host_cards = card_pile.draw_host_card()
-    group_data.last_player = [player3.uid, player3.name]
-    group_data.next_player = [player1.uid, player1.name]
-    group_data.process = 0
-
-    # send cards message
-    sendCards(player1, plugin_event)
-    sendCards(player2, plugin_event)
-    sendCards(player3, plugin_event)
-
-
-def setHost(group_data, uid, gid, plugin_event):
-    player_data = df.getUserData(uid, gid)
-    player_data.incCards(group_data.host_cards)
-    sendCards(player_data, plugin_event)
-    group_data.host_player = [uid, player_data.name]
-    group_data.next_player = [uid, player_data.name]
-    group_data.process = 1

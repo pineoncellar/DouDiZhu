@@ -114,14 +114,21 @@ class playerData:
 
     # check if player has these cards
     def check_cards(self, cards: list):
-        tmp_card_list = self.cards
+        tmp_card_list = []
+        in_list = True
 
         for card in cards:
-            if card in tmp_card_list:
-                tmp_card_list.remove(card)
+            if card in self.cards:
+                self.cards.remove(card)
+                tmp_card_list.append(card)
             else:
-                return False
-        return True
+                in_list = False
+                break
+
+        for card in tmp_card_list:
+            self.cards.append(card)
+        self.sort()
+        return in_list
 
 
 def getCardValue(card: str):

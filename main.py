@@ -73,6 +73,7 @@ def unity_reply(plugin_event, Proc):
     gid = plugin_event.data.group_id
     name = plugin_event.data.sender["name"]
 
+    # 还需要去除at
     prefix = re.match("^\S+", raw_msg).group(0)
     if prefix == "斗地主帮助":
         plugin_event.reply(help_msg)
@@ -87,6 +88,12 @@ def unity_reply(plugin_event, Proc):
         plugin_event.reply("last_cards " + str(group_data.last_cards))
         plugin_event.reply("last_player " + str(group_data.last_player))
         plugin_event.reply("host_cards " + str(group_data.host_cards))
+
+    elif prefix == "玩家状态":
+        player_data = df.getUserData(uid, gid)
+        plugin_event.reply("uid: ", str(player_data.uid))
+        plugin_event.reply("name: " + str(player_data.name))
+        plugin_event.reply("cards: " + str(player_data.cards))
 
     elif prefix == "加入游戏":
         group_data = df.getGroupData(gid)
@@ -171,7 +178,7 @@ def unity_reply(plugin_event, Proc):
             return
 
         player_data = df.getUserData(uid, gid)
-        gp.sendCards(player_data)
+        gp.sendCards(player_data, plugin_event)
 
     elif prefix == "出牌":
         group_data = df.getGroupData(gid)
@@ -179,50 +186,62 @@ def unity_reply(plugin_event, Proc):
             return
         player_data = df.getUserData(uid, gid)
 
+        if group_data.last_player == group_data.next_player:
+            group_data.last_cards = None
+
         player_cards = raw_msg[3:].split(" ")
+        player_cards = list(map(str.upper, player_cards))  # uppercase
         if not player_data.check_cards(player_cards):
-            plugin_event.reply("ni mei you zhe xie pai")
+            plugin_event.reply("你没有这些牌")
 
         stat, card_type = gp.cmp_cards(player_cards, group_data.last_cards)
         if stat:
             group_data.last_cards = player_cards
-            player_data.sort(player_cards)
-            plugin_event.reply(f"{name}chu pai : {card_type} {raw_msg[3:]}")
+            group_data.last_player = group_data.next_player
+            player_data.decCards(player_cards)
+            player_data.sort()
+            plugin_event.reply(f"{name}出牌: {card_type} {raw_msg[3:]}")
 
             if len(player_data.cards) == 0:
-                pass
-
-            group_data.nextTurn()
+                gp.game_end(group_data, player_data, plugin_event)
+                df.resetGroupData(gid)
+            else:
+                group_data._pass()
+                gp.sendCards(player_data, plugin_event)
+                df.setGroupData(group_data, gid)
+                df.setUserData(player_data, uid, gid)
 
         else:
-            plugin_event.reply("play fail")  # play fail
+            plugin_event.reply(f"错误，请重新选择出牌:\n{card_type}")  # card_type = error msg
 
     elif prefix == "要不起":
         group_data = df.getGroupData(gid)
         if gp.exclude(group_data, uid, plugin_event):
             return
 
-        group_data.nextTurn(group_data, name)
+        group_data._pass()
         plugin_event.reply(f"{name}不要")
+
+        df.setGroupData(group_data, gid)
 
     elif prefix == "启用斗地主":
         group_data = df.getGroupData(gid)
         if group_data.switch:
-            plugin_event.reply("wei jin yong")
+            plugin_event.reply("本群斗地主未禁用")
             return
 
         df.resetGroupData(gid)
-        plugin_event.reply("yi qi yong")
+        plugin_event.reply("已启用本群斗地主")
 
     elif prefix == "禁用斗地主":
         group_data = df.getGroupData(gid)
         if not group_data.switch:
-            plugin_event.reply("wei qi yong")
+            plugin_event.reply("本群斗地主未启用")
             return
 
         group_data.switch = False
         df.setGroupData(group_data, gid)
-        plugin_event.reply("yi jin yong")
+        plugin_event.reply("已禁用本群斗地主")
 
-    elif prefix == "dou di zhu tong ji":
+    elif prefix == "斗地主统计":
         pass
