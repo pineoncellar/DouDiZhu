@@ -26,6 +26,10 @@ def exclude(
 ):
     if not g_data.switch:  # group switch
         return True
+    if g_data.process:
+        pass
+    else:
+        return True
     for player in g_data.player_list:  # check player list
         if uid == player[0]:
             break
