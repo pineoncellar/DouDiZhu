@@ -89,7 +89,7 @@ def unity_reply(plugin_event, Proc):
     gid = plugin_event.data.group_id
     name = plugin_event.data.sender["name"]
 
-    # 还需要去除at
+    # to do: 去除at
     prefix = re.match("^\S+", raw_msg).group(0)
     if prefix == "斗地主帮助":
         plugin_event.reply(help_msg)
@@ -141,9 +141,9 @@ def unity_reply(plugin_event, Proc):
         player_list_message = (
             "本轮游戏顺序为 "
             + group_data.player_list[0][1]
-            + ","
+            + ", "
             + group_data.player_list[1][1]
-            + ","
+            + ", "
             + group_data.player_list[2][1]
             + " 请抢地主"
         )
@@ -206,6 +206,7 @@ def unity_reply(plugin_event, Proc):
         player_data = df.getUserData(uid, gid)
         gp.sendCards(player_data, plugin_event)
 
+    # to du: 出牌后多一个空格识别不出来，牌后多个空格也识别不出
     elif prefix == "出牌":
         group_data = df.getGroupData(gid)
         if gp.exclude(group_data, uid, plugin_event):
@@ -227,14 +228,14 @@ def unity_reply(plugin_event, Proc):
             group_data.last_player = group_data.next_player
             player_data.decCards(player_cards)
             player_data.sort()
-            plugin_event.reply(f"{name}出牌: {card_type} {raw_msg[3:]}")
+            plugin_event.reply(
+                f"{name}出牌: {card_type} {raw_msg[3:]} 剩余牌数{len(player_data.cards)}"
+            )
 
             if len(player_data.cards) == 0:
                 gp.game_end(group_data, player_data, plugin_event)
                 df.resetGroupData(gid)
             else:
-                if len(player_data.cards) < 5:
-                    plugin_event.reply(f"{name}只剩下{len(player_data.cards)}张牌啦")
                 group_data._pass()
                 gp.sendCards(player_data, plugin_event)
                 df.setGroupData(group_data, gid)

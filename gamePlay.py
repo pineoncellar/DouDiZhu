@@ -20,26 +20,26 @@ import random
 
 
 def exclude(
-    g_data: gd.gameData,
+    group_data: gd.gameData,
     uid,
     plugin_event: OlivOS.API.Event,
 ):
-    if not g_data.switch:  # group switch
+    if not group_data.switch:  # group switch
         return True
-    if g_data.process:
+    if group_data.process != None:
         pass
     else:
         return True
-    for player in g_data.player_list:  # check player list
+    for player in group_data.player_list:  # check player list
         if uid == player[0]:
             break
     else:
         plugin_event.reply("你不在游戏中")
         return True
-    if uid == g_data.next_player[0]:  # check next player
+    if uid == group_data.next_player[0]:  # check next player
         pass
     else:
-        plugin_event.reply("现在是" + g_data.next_player[1] + "的回合喔")
+        plugin_event.reply("现在是" + group_data.next_player[1] + "的回合喔")
         return True
 
     return False
@@ -47,32 +47,34 @@ def exclude(
 
 def exclude_before_game(
     case: int,  # 0-add 1-start
-    g_data: gd.gameData,
+    group_data: gd.gameData,
     uid,
     plugin_event: OlivOS.API.Event,
 ):
     if case == 0:
-        if len(g_data.player_list) == 3:
+        if len(group_data.player_list) == 3:
             plugin_event.reply("这里已经满人了")
             return True
-        if not g_data.switch:
+        if not group_data.switch:
             return True
-        for player in g_data.player_list:
+        for player in group_data.player_list:
             if uid == player[0]:
                 plugin_event.reply("你已经在玩家列表中了喔")
                 return True
     elif case == 1:
-        if not g_data.switch:
+        if not group_data.switch:
             return True
-        for player in g_data.player_list:
+        if group_data.process != None:
+            return True
+        for player in group_data.player_list:
             if uid == player[0]:
                 break
         else:
             plugin_event.reply("你不在游戏中")
             return True
-        if len(g_data.player_list) < 3:
+        if len(group_data.player_list) < 3:
             player_list = ""
-            for player in g_data.player_list:
+            for player in group_data.player_list:
                 player_list = player_list + "," + player[1]
                 player_list = player_list[1:]
             plugin_event.reply(f"人还不够呢，快去摇人\n当前玩家列表:{player_list}")
@@ -193,6 +195,7 @@ def game_end(
 
 
 ranks = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A", "2", "X", "D"]
+det_ranks = ["3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
 """
 分析卡牌需要分析出三个数据：牌型、主值、次数
 9种牌型: 
@@ -262,7 +265,7 @@ def analyze_cards(cards: list) -> tuple:
     elif total_number == type_number:  # 顺子
         straight_list = []
         for c in list(card_dict.keys()):
-            straight_list.append(gd.ranks.index(c) + 1)
+            straight_list.append(det_ranks.index(c) + 1)
         straight_list.sort()
         if determine_cse(straight_list):
             card_type = 3
@@ -284,7 +287,7 @@ def analyze_cards(cards: list) -> tuple:
             else:  # 仅有6张的连对
                 straight_list = []
                 for c in list(card_dict.keys()):
-                    straight_list.append(gd.ranks.index(c) + 1)
+                    straight_list.append(det_ranks.index(c) + 1)
                 straight_list.sort()
                 if determine_cse(straight_list):
                     card_type = 4
@@ -304,7 +307,7 @@ def analyze_cards(cards: list) -> tuple:
                 elif v == 3:  # 仅有6张的三顺
                     straight_list = []
                     for c in list(card_dict.keys()):
-                        straight_list.append(gd.ranks.index(c) + 1)
+                        straight_list.append(det_ranks.index(c) + 1)
                     straight_list.sort()
                     if determine_cse(straight_list):
                         card_type = 8
@@ -319,7 +322,7 @@ def analyze_cards(cards: list) -> tuple:
         else:  # 连对
             straight_list = []
             for c in list(card_dict.keys()):
-                straight_list.append(gd.ranks.index(c) + 1)
+                straight_list.append(det_ranks.index(c) + 1)
             straight_list.sort()
             if determine_cse(straight_list):
                 card_type = 4
@@ -332,7 +335,7 @@ def analyze_cards(cards: list) -> tuple:
             if v == 1:
                 continue
             elif v == 3:
-                straight_list.append(gd.ranks.index(k) + 1)
+                straight_list.append(det_ranks.index(k) + 1)
             else:
                 break
         else:
@@ -350,7 +353,7 @@ def analyze_cards(cards: list) -> tuple:
         else:
             straight_list = []
             for c in list(card_dict.keys()):
-                straight_list.append(gd.ranks.index(c) + 1)
+                straight_list.append(det_ranks.index(c) + 1)
             straight_list.sort()
             if determine_cse(straight_list):
                 card_type = 8
@@ -363,7 +366,7 @@ def analyze_cards(cards: list) -> tuple:
             if v == 2:
                 continue
             elif v == 3:
-                straight_list.append(gd.ranks.index(k) + 1)
+                straight_list.append(det_ranks.index(k) + 1)
             else:
                 break
         else:
