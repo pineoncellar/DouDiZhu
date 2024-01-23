@@ -11,7 +11,7 @@
 @License   :   CC BY-NC-SA 4.0
 @Desc      :   斗地主插件主流程
 """
-version = "1.0.0"
+version = "1.0.1"
 
 import OlivOS
 import DouDiZhu.dataFiles as df
@@ -89,7 +89,6 @@ def unity_reply(plugin_event, Proc):
     gid = plugin_event.data.group_id
     name = plugin_event.data.sender["name"]
 
-    # to do: 去除at
     prefix = re.match("^\S+", raw_msg).group(0)
     if prefix == "斗地主帮助":
         plugin_event.reply(help_msg)
@@ -206,7 +205,6 @@ def unity_reply(plugin_event, Proc):
         player_data = df.getUserData(uid, gid)
         gp.sendCards(player_data, plugin_event)
 
-    # to du: 出牌后多一个空格识别不出来，牌后多个空格也识别不出
     elif prefix == "出牌":
         group_data = df.getGroupData(gid)
         if gp.exclude(group_data, uid, plugin_event):
@@ -218,6 +216,8 @@ def unity_reply(plugin_event, Proc):
 
         player_cards = raw_msg[3:].split(" ")
         player_cards = list(map(str.upper, player_cards))  # uppercase
+        while "" in player_cards:
+            player_cards.remove("")  # remove excess elements
         if not player_data.check_cards(player_cards):
             plugin_event.reply(f"错误，请重新选择出牌:\n你没有这些牌")
             return
