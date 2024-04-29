@@ -72,7 +72,7 @@ def exclude_before_game(
         else:
             plugin_event.reply("你不在游戏中")
             return True
-        if len(group_data.player_list) < 3:
+        if len(group_data.player_list) < 2:
             player_list = ""
             for player in group_data.player_list:
                 player_list = player_list + "," + player[1]
