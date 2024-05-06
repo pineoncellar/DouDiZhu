@@ -59,6 +59,7 @@ class gameData:
         last_cards: "list|None" = None,
         last_player=None,
         host_cards: "list|None" = None,
+        ai_player: bool = False,
     ):
         self.switch = switch
         self.player_list = player_list
@@ -68,6 +69,7 @@ class gameData:
         self.last_cards = last_cards
         self.last_player = last_player
         self.host_cards = host_cards
+        self.ai_player = ai_player
 
     def gameDataInit(self, card_pile, player1, player3):
         self.host_cards = card_pile.draw_host_card()

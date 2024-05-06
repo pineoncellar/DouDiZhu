@@ -63,6 +63,7 @@ class gameData:
     last_cards: list|None
     last_player: uid|None
     host_cards: list|None
+    ai_player: bool = False # 是否有ai玩家
 """
 
 help_msg = f"""斗地主插件 ver{version} by 地窖上的松
@@ -94,6 +95,9 @@ def unity_reply(plugin_event, Proc):
         plugin_event.reply(help_msg)
 
     elif prefix == "斗地主状态":  # 测试用
+        if str(uid) != "602380092":
+            return
+
         group_data = df.getGroupData(gid)
         plugin_event.reply("switch " + str(group_data.switch))
         plugin_event.reply("player_list " + str(group_data.player_list))
@@ -105,6 +109,9 @@ def unity_reply(plugin_event, Proc):
         plugin_event.reply("host_cards " + str(group_data.host_cards))
 
     elif prefix == "玩家状态":
+        if str(uid) != "602380092":
+            return
+
         player_data = df.getUserData(uid, gid)
         plugin_event.reply("uid: ", str(player_data.uid))
         plugin_event.reply("name: " + str(player_data.name))
@@ -112,10 +119,21 @@ def unity_reply(plugin_event, Proc):
 
     elif prefix == "加入游戏":
         group_data = df.getGroupData(gid)
+
+        try:
+            __ = group_data.ai_player
+        except:
+            group_data.ai_player = False
+
         if gp.exclude_before_game(0, group_data, uid, plugin_event):
             return
 
-        group_data.player_list.append([uid, name])
+        if group_data.ai_player:  # 保证ai为最后一位
+            ai_player_data = group_data.player_list.pop()
+            group_data.player_list.append([uid, name])
+            group_data.player_list.append(ai_player_data)
+        else:
+            group_data.player_list.append([uid, name])
         player_list = ""
         for player in group_data.player_list:
             player_list = player_list + "," + player[1]
@@ -156,7 +174,9 @@ def unity_reply(plugin_event, Proc):
 
         gp.setHost(group_data, uid, gid, plugin_event)
         plugin_event.reply(f"{name}成为了地主! ")
-        host_card_message = "地主牌为" + " ".join(group_data.host_cards) + "\n请地主出牌"
+        host_card_message = (
+            "地主牌为" + " ".join(group_data.host_cards) + "\n请地主出牌"
+        )
         plugin_event.reply(host_card_message)
         df.setGroupData(group_data, gid)
 
@@ -167,7 +187,9 @@ def unity_reply(plugin_event, Proc):
 
         if group_data.next_player == group_data.last_player:  # all refused
             plugin_event.reply(
-                "大家都放弃了地主，地主牌为" + " ".join(group_data.host_cards) + "\n正在重新洗牌"
+                "大家都放弃了地主，地主牌为"
+                + " ".join(group_data.host_cards)
+                + "\n正在重新洗牌"
             )
 
             gp.gameInit(group_data, gid, plugin_event)
@@ -185,6 +207,7 @@ def unity_reply(plugin_event, Proc):
         else:
             group_data._pass()
             plugin_event.reply(f"{name}不要地主啦")
+            gp.ai_host_check(group_data, gid, plugin_event)
         df.setGroupData(group_data, gid)
 
     elif prefix == "查看手牌":
@@ -232,6 +255,8 @@ def unity_reply(plugin_event, Proc):
                 f"{name}出牌: {card_type} {raw_msg[3:]} 剩余牌数{len(player_data.cards)}"
             )
 
+            gp.douzero_step(group_data, gid, player_cards, plugin_event)
+
             if len(player_data.cards) == 0:
                 gp.game_end(group_data, player_data, plugin_event)
                 df.resetGroupData(gid)
@@ -242,7 +267,9 @@ def unity_reply(plugin_event, Proc):
                 df.setUserData(player_data, uid, gid)
 
         else:
-            plugin_event.reply(f"错误，请重新选择出牌:\n{card_type}")  # card_type = error msg
+            plugin_event.reply(
+                f"错误，请重新选择出牌:\n{card_type}"
+            )  # card_type = error msg
 
     elif prefix == "要不起":
         group_data = df.getGroupData(gid)
@@ -251,6 +278,7 @@ def unity_reply(plugin_event, Proc):
 
         group_data._pass()
         plugin_event.reply(f"{name}不要")
+        gp.douzero_step(group_data, gid, [], plugin_event)
 
         df.setGroupData(group_data, gid)
 
@@ -275,3 +303,18 @@ def unity_reply(plugin_event, Proc):
 
     elif prefix == "斗地主统计":
         pass
+
+    elif prefix == "添加人机":
+        group_data = df.getGroupData(gid)
+        if gp.exclude_before_game(2, group_data, uid, plugin_event):
+            return
+
+        group_data.player_list.append([0, "AI1号"])
+        group_data.ai_player = True
+        player_list = ""
+        for player in group_data.player_list:
+            player_list = player_list + "," + player[1]
+        player_list = player_list[1:]
+        plugin_event.reply(f"{name}加入游戏，当前玩家列表:{player_list}")
+
+        df.setGroupData(group_data, gid)

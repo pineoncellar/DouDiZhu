@@ -17,6 +17,8 @@ import DouDiZhu.dataFiles as df
 import DouDiZhu.gameData as gd
 
 import random
+import requests
+import json
 
 
 def exclude(
@@ -46,7 +48,7 @@ def exclude(
 
 
 def exclude_before_game(
-    case: int,  # 0-add 1-start
+    case: int,  # 0-add 1-start 2-add_ai
     group_data: gd.gameData,
     uid,
     plugin_event: OlivOS.API.Event,
@@ -72,13 +74,23 @@ def exclude_before_game(
         else:
             plugin_event.reply("你不在游戏中")
             return True
-        if len(group_data.player_list) < 2:
+        if len(group_data.player_list) < 3:
             player_list = ""
             for player in group_data.player_list:
                 player_list = player_list + "," + player[1]
-                player_list = player_list[1:]
+            player_list = player_list[1:]
             plugin_event.reply(f"人还不够呢，快去摇人\n当前玩家列表:{player_list}")
             return True
+    elif case == 2:
+        if len(group_data.player_list) == 3:
+            plugin_event.reply("这里已经满人了")
+            return True
+        if not group_data.switch:
+            return True
+        for player in group_data.player_list:
+            if 0 == player[0]:
+                plugin_event.reply("玩家列表中已经有AI了喔")
+                return True
     return False
 
 
@@ -86,7 +98,8 @@ def sendCards(player_data: gd.playerData, plugin_event):
     cards = player_data.cards
     message = "你的手牌是: " + " ".join(cards)
     uid = player_data.uid
-    plugin_event.send("private", uid, message)
+    if uid != 0:  # 排除AI
+        plugin_event.send("private", uid, message)
 
 
 def gameInit(group_data, gid, plugin_event):
@@ -94,7 +107,12 @@ def gameInit(group_data, gid, plugin_event):
     card_pile.shuffle()
 
     # mix the player list
-    random.shuffle(group_data.player_list)
+    if group_data.ai_player:  # 确保ai最后一位抢地主，没人要这地主就是ai的了
+        ai_player_data = group_data.player_list.pop()
+        random.shuffle(group_data.player_list)
+        group_data.player_list.append(ai_player_data)
+    else:
+        random.shuffle(group_data.player_list)
 
     # draw player cards
     player1 = gd.playerData(
@@ -139,6 +157,8 @@ def setHost(group_data, uid, gid, plugin_event):
     group_data.host_player = [uid, player_data.name]
     group_data.next_player = [uid, player_data.name]
     group_data.process = 1
+
+    douzero_init(group_data, gid, plugin_event)
 
 
 def cmp_cards(cards: list, last_cards: list) -> tuple:
@@ -391,3 +411,133 @@ def determine_cse(list: list) -> bool:
         if list[i] - list[i - 1] != 1:
             return False
     return True
+
+
+def ai_host_check(group_data, gid, plugin_event):
+    if not group_data.ai_player:
+        return
+
+    if group_data.next_player[0] == 0:  # ai抢地主
+        setHost(group_data, 0, gid, plugin_event)
+        plugin_event.reply(f"AI成为了地主! ")
+        host_card_message = (
+            "地主牌为" + " ".join(group_data.host_cards) + "\n请地主出牌"
+        )
+        plugin_event.reply(host_card_message)
+    else:
+        return
+
+
+def douzero_init(group_data, gid, plugin_event):
+    if not group_data.ai_player:
+        return
+
+    game_data = {}
+    if group_data.host_player[0] == 0:
+        ai_role = 1
+    elif group_data.host_player == group_data.player_list[0]:  # 地主上家
+        ai_role = 0
+    else:
+        ai_role = 2
+    ai_player_data = df.getUserData(0, gid)
+    ai_cards = "".join(["T" if i == "10" else i for i in ai_player_data.cards])
+    host_cards = "".join(["T" if i == "10" else i for i in group_data.host_cards])
+
+    game_data = {
+        "user_hand_cards_real": ai_cards,
+        "user_position_code": ai_role,
+        "three_landlord_cards_real": host_cards,
+        "group_id": gid,
+    }
+    data = {"action": "init", "data": game_data}
+
+    res = douzero_send(data)
+
+    if ai_role == 1:  # ai是地主，马上出牌
+        player_cards = [
+            "10" if i == "T" else i for i in res["data"]["cards"]
+        ]  # 将T转为10
+
+        if player_cards != []:
+            if group_data.last_player == group_data.next_player:
+                group_data.last_cards = None
+
+            stat, card_type = cmp_cards(player_cards, group_data.last_cards)
+            if stat:
+                group_data.last_cards = player_cards
+                group_data.last_player = group_data.next_player
+                ai_player_data.decCards(player_cards)
+                ai_player_data.sort()
+                play_cards = " ".join(player_cards)
+                plugin_event.reply(
+                    f"AI出牌: {card_type} {play_cards} 剩余牌数{len(ai_player_data.cards)}"
+                )
+
+                if len(ai_player_data.cards) == 0:
+                    game_end(group_data, ai_player_data, plugin_event)
+                    df.resetGroupData(gid)
+                else:
+                    group_data._pass()
+                    # sendCards(ai_player_data, plugin_event)
+                    df.setGroupData(group_data, gid)
+                    df.setUserData(ai_player_data, 0, gid)
+        else:  # AI不要
+            group_data._pass()
+            plugin_event.reply(f"AI不要")
+
+
+def douzero_step(group_data, gid, player_cards, plugin_event):
+    if not group_data.ai_player:
+        return
+
+    post_cards = "".join(["T" if i == "10" else i for i in player_cards])
+    if player_cards == []:
+        post_cards = ""
+
+    game_data = {
+        "group_id": gid,
+        "player": group_data.last_player,
+        "cards": post_cards,
+        "next_player": group_data.next_player,
+    }
+    data = {"action": "play", "data": game_data}
+
+    res = douzero_send(data)
+
+    if res["action"] == "play":  # AI出牌了
+        ai_player_data = df.getUserData(0, gid)
+        player_cards = ["10" if i == "T" else i for i in res["data"]["cards"]]
+
+        if player_cards != []:
+            if group_data.last_player == group_data.next_player:
+                group_data.last_cards = None
+
+            stat, card_type = cmp_cards(player_cards, group_data.last_cards)
+            if stat:
+                group_data.last_cards = player_cards
+                group_data.last_player = group_data.next_player
+                ai_player_data.decCards(player_cards)
+                ai_player_data.sort()
+                play_cards = " ".join(player_cards)
+                plugin_event.reply(
+                    f"AI出牌: {card_type} {play_cards} 剩余牌数{len(ai_player_data.cards)}"
+                )
+
+                if len(ai_player_data.cards) == 0:
+                    game_end(group_data, ai_player_data, plugin_event)
+                    df.resetGroupData(gid)
+                else:
+                    group_data._pass()
+                    # sendCards(ai_player_data, plugin_event)
+                    df.setGroupData(group_data, gid)
+                    df.setUserData(ai_player_data, 0, gid)
+        else:  # AI不要
+            group_data._pass()
+            plugin_event.reply(f"AI不要")
+
+
+def douzero_send(data: dict, port="13579"):
+    url = "http://127.0.0.1:" + str(port)
+    res = requests.post(url=url, data=json.dumps(data))
+    res = json.loads(res.text)
+    return res
