@@ -255,13 +255,14 @@ def unity_reply(plugin_event, Proc):
                 f"{name}出牌: {card_type} {raw_msg[3:]} 剩余牌数{len(player_data.cards)}"
             )
 
-            gp.douzero_step(group_data, gid, player_cards, plugin_event)
-
             if len(player_data.cards) == 0:
                 gp.game_end(group_data, player_data, plugin_event)
                 df.resetGroupData(gid)
             else:
                 group_data._pass()
+                gp.douzero_step(
+                    group_data, gid, player_cards, plugin_event
+                )  # step一定要放在所有流程之后，保存数据之前 ~~花了一天才找到这个bug~~
                 gp.sendCards(player_data, plugin_event)
                 df.setGroupData(group_data, gid)
                 df.setUserData(player_data, uid, gid)

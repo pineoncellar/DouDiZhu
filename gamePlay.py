@@ -179,7 +179,7 @@ def cmp_cards(cards: list, last_cards: list) -> tuple:
             if card_count != 0:
                 if not (card_count == l_card_count):
                     return False, "牌型不匹配"
-
+    # 如果last_cards为None，则直接判断有效
     if card_type == 12:
         card_type = 11
     if card_type == 10 and card_value == 16:
@@ -452,6 +452,8 @@ def douzero_init(group_data, gid, plugin_event):
     data = {"action": "init", "data": game_data}
 
     res = douzero_send(data)
+    # plugin_event.reply(f"res: {json.dumps(res)}")
+    # plugin_event.send("group", 1006250371, f"from gid:{gid}  res:{res}")
 
     if ai_role == 1:  # ai是地主，马上出牌
         player_cards = [
@@ -503,6 +505,9 @@ def douzero_step(group_data, gid, player_cards, plugin_event):
     data = {"action": "play", "data": game_data}
 
     res = douzero_send(data)
+
+    # plugin_event.reply(f"测试信息：\n res: {json.dumps(res)}")
+    # plugin_event.send("group", 1006250371, f"from gid:{gid}  res:{res}")
 
     if res["action"] == "play":  # AI出牌了
         ai_player_data = df.getUserData(0, gid)
