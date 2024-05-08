@@ -20,6 +20,8 @@ import random
 import requests
 import json
 
+model_list = ["WP", "ADP", "sl"]
+
 
 def exclude(
     group_data: gd.gameData,
@@ -428,7 +430,7 @@ def ai_host_check(group_data, gid, plugin_event):
         return
 
 
-def douzero_init(group_data, gid, plugin_event):
+def douzero_init(group_data, gid, plugin_event, model=model_list[0]):
     if not group_data.ai_player:
         return
 
@@ -442,12 +444,14 @@ def douzero_init(group_data, gid, plugin_event):
     ai_player_data = df.getUserData(0, gid)
     ai_cards = "".join(["T" if i == "10" else i for i in ai_player_data.cards])
     host_cards = "".join(["T" if i == "10" else i for i in group_data.host_cards])
+    model = model_list[int(ai_player_data.uid)]
 
     game_data = {
         "user_hand_cards_real": ai_cards,
         "user_position_code": ai_role,
         "three_landlord_cards_real": host_cards,
-        "group_id": gid,
+        "pid": gid,
+        "model": model,
     }
     data = {"action": "init", "data": game_data}
 
@@ -497,10 +501,9 @@ def douzero_step(group_data, gid, player_cards, plugin_event):
         post_cards = ""
 
     game_data = {
-        "group_id": gid,
+        "pid": gid,
         "player": group_data.last_player,
         "cards": post_cards,
-        "next_player": group_data.next_player,
     }
     data = {"action": "play", "data": game_data}
 
@@ -531,6 +534,7 @@ def douzero_step(group_data, gid, player_cards, plugin_event):
                 if len(ai_player_data.cards) == 0:
                     game_end(group_data, ai_player_data, plugin_event)
                     df.resetGroupData(gid)
+                    return True
                 else:
                     group_data._pass()
                     # sendCards(ai_player_data, plugin_event)
@@ -539,6 +543,7 @@ def douzero_step(group_data, gid, player_cards, plugin_event):
         else:  # AI不要
             group_data._pass()
             plugin_event.reply(f"AI不要")
+    return False
 
 
 def douzero_send(data: dict, port="13579"):

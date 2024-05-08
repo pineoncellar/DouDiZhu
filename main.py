@@ -109,11 +109,13 @@ def unity_reply(plugin_event, Proc):
         plugin_event.reply("host_cards " + str(group_data.host_cards))
 
     elif prefix == "玩家状态":
-        if str(uid) != "602380092":
+        if str(gid) == "1006250371":
+            pass
+        elif str(uid) != "602380092" and str(uid) != "0":
             return
 
         player_data = df.getUserData(uid, gid)
-        plugin_event.reply("uid: ", str(player_data.uid))
+        plugin_event.reply("uid: " + str(player_data.uid))
         plugin_event.reply("name: " + str(player_data.name))
         plugin_event.reply("cards: " + str(player_data.cards))
 
@@ -260,9 +262,10 @@ def unity_reply(plugin_event, Proc):
                 df.resetGroupData(gid)
             else:
                 group_data._pass()
-                gp.douzero_step(
+                if gp.douzero_step(
                     group_data, gid, player_cards, plugin_event
-                )  # step一定要放在所有流程之后，保存数据之前 ~~花了一天才找到这个bug~~
+                ):  # step一定要放在所有流程之后，保存数据之前 ~~花了一天才找到这个bug~~
+                    return  # 当游戏在AI出牌后结束，就直接退出，不然会将最后一轮出牌的游戏数据保存下来
                 gp.sendCards(player_data, plugin_event)
                 df.setGroupData(group_data, gid)
                 df.setUserData(player_data, uid, gid)
@@ -306,6 +309,21 @@ def unity_reply(plugin_event, Proc):
         pass
 
     elif prefix == "添加人机":
+        group_data = df.getGroupData(gid)
+        if gp.exclude_before_game(2, group_data, uid, plugin_event):
+            return
+
+        group_data.player_list.append([0, "AI1号"])
+        group_data.ai_player = True
+        player_list = ""
+        for player in group_data.player_list:
+            player_list = player_list + "," + player[1]
+        player_list = player_list[1:]
+        plugin_event.reply(f"{name}加入游戏，当前玩家列表:{player_list}")
+
+        df.setGroupData(group_data, gid)
+
+    elif prefix == "添加简单人机":
         group_data = df.getGroupData(gid)
         if gp.exclude_before_game(2, group_data, uid, plugin_event):
             return
