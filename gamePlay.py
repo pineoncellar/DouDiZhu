@@ -447,9 +447,9 @@ def douzero_init(group_data, gid, plugin_event, model=model_list[0]):
     model = model_list[int(ai_player_data.uid)]
 
     game_data = {
-        "user_hand_cards_real": ai_cards,
-        "user_position_code": ai_role,
-        "three_landlord_cards_real": host_cards,
+        "hand_cards": ai_cards,
+        "position_code": ai_role,
+        "three_landlord_cards": host_cards,
         "pid": gid,
         "model": model,
     }
@@ -502,7 +502,11 @@ def douzero_step(group_data, gid, player_cards, plugin_event):
 
     game_data = {
         "pid": gid,
-        "player": group_data.last_player,
+        "player": (
+            group_data.player_list.index(group_data.next_player)
+            - group_data.player_list.index(group_data.host_player)
+        )
+        % 3,  # 取玩家位号：0-地主上家，1-地主，2-地主下家
         "cards": post_cards,
     }
     data = {"action": "play", "data": game_data}
@@ -546,7 +550,7 @@ def douzero_step(group_data, gid, player_cards, plugin_event):
     return False
 
 
-def douzero_send(data: dict, port="13579"):
+def douzero_send(data: dict, port="24813"):
     url = "http://127.0.0.1:" + str(port)
     res = requests.post(url=url, data=json.dumps(data))
     res = json.loads(res.text)
