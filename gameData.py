@@ -18,6 +18,13 @@ import random
 ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]  # cards
 cards_pile = []
 
+# [id, name, model]
+ai_data_list = [
+    [100, "困难人机", "WP"],
+    [200, "中级人机", "ADP"],
+    [300, "简单人机", "sl"],
+]
+
 
 class CardPile:
     def __init__(self):
@@ -49,6 +56,7 @@ class CardPile:
 
 
 class gameData:
+
     def __init__(
         self,
         switch: bool = True,
@@ -59,7 +67,7 @@ class gameData:
         last_cards: "list|None" = None,
         last_player=None,
         host_cards: "list|None" = None,
-        ai_player: bool = False,
+        ai_player_number: int = 0,
     ):
         self.switch = switch
         self.player_list = player_list
@@ -69,7 +77,7 @@ class gameData:
         self.last_cards = last_cards
         self.last_player = last_player
         self.host_cards = host_cards
-        self.ai_player = ai_player
+        self.ai_player_number = ai_player_number
 
     def gameDataInit(self, card_pile, player1, player3):
         self.host_cards = card_pile.draw_host_card()
@@ -97,6 +105,7 @@ class playerData:
         self.uid = uid
         self.name = name
         self.cards = cards
+        self.role = None
 
     # decrease cards
     def decCards(self, cards: list):
@@ -131,6 +140,9 @@ class playerData:
             self.cards.append(card)
         self.sort()
         return in_list
+
+    def setRole(self, role: int):
+        self.role = role
 
 
 def getCardValue(card: str):

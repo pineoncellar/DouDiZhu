@@ -47,8 +47,8 @@ class Event(object):
     def group_message(plugin_event, Proc):
         unity_reply(plugin_event, Proc)
 
-    def private_mseeage(plugin_event, Proc):
-        pass
+    def private_message(plugin_event, Proc):
+        unity_reply(plugin_event, Proc)
 
 
 group_data = gd.gameData()
@@ -63,7 +63,7 @@ class gameData:
     last_cards: list|None
     last_player: uid|None
     host_cards: list|None
-    ai_player: bool = False # 是否有ai玩家
+    ai_player_number: bool = False # 是否有ai玩家
 """
 
 help_msg = f"""斗地主插件 ver{version} by 地窖上的松
@@ -87,7 +87,10 @@ help_msg = f"""斗地主插件 ver{version} by 地窖上的松
 def unity_reply(plugin_event, Proc):
     raw_msg = plugin_event.data.message
     uid = plugin_event.data.user_id
-    gid = plugin_event.data.group_id
+    try:
+        gid = plugin_event.data.group_id
+    except:
+        gid = uid  # 在私聊中将QQ号作为窗口号
     name = plugin_event.data.sender["name"]
 
     prefix = re.match("^\S+", raw_msg).group(0)
@@ -123,19 +126,14 @@ def unity_reply(plugin_event, Proc):
         group_data = df.getGroupData(gid)
 
         try:
-            __ = group_data.ai_player
+            __ = group_data.ai_player_number
         except:
-            group_data.ai_player = False
+            group_data.ai_player_number = 0
 
         if gp.exclude_before_game(0, group_data, uid, plugin_event):
             return
 
-        if group_data.ai_player:  # 保证ai为最后一位
-            ai_player_data = group_data.player_list.pop()
-            group_data.player_list.append([uid, name])
-            group_data.player_list.append(ai_player_data)
-        else:
-            group_data.player_list.append([uid, name])
+        group_data.player_list.append([uid, name])
         player_list = ""
         for player in group_data.player_list:
             player_list = player_list + "," + player[1]
@@ -157,16 +155,6 @@ def unity_reply(plugin_event, Proc):
             return
 
         gp.gameInit(group_data, gid, plugin_event)
-        player_list_message = (
-            "本轮游戏顺序为 "
-            + group_data.player_list[0][1]
-            + ", "
-            + group_data.player_list[1][1]
-            + ", "
-            + group_data.player_list[2][1]
-            + " 请抢地主"
-        )
-        plugin_event.reply(player_list_message)
         df.setGroupData(group_data, gid)
 
     elif prefix == "抢地主":
@@ -191,10 +179,11 @@ def unity_reply(plugin_event, Proc):
             plugin_event.reply(
                 "大家都放弃了地主，地主牌为"
                 + " ".join(group_data.host_cards)
-                + "\n正在重新洗牌"
+                + ", 请重新开始游戏"
             )
+            group_data.process = None
 
-            gp.gameInit(group_data, gid, plugin_event)
+            """gp.gameInit(group_data, gid, plugin_event)
             player_list_message = (
                 "本轮游戏顺序为 "
                 + group_data.player_list[0][1]
@@ -202,10 +191,8 @@ def unity_reply(plugin_event, Proc):
                 + group_data.player_list[1][1]
                 + ","
                 + group_data.player_list[2][1]
-                + " 请抢地主"
             )
-            plugin_event.reply(player_list_message)
-
+            plugin_event.reply(player_list_message)"""
         else:
             group_data._pass()
             plugin_event.reply(f"{name}不要地主啦")
@@ -223,9 +210,9 @@ def unity_reply(plugin_event, Proc):
         for player in group_data.player_list:  # check player list
             if uid == player[0]:
                 break
-            else:
-                plugin_event.reply("你不在游戏中")
-                return
+        else:
+            plugin_event.reply("你不在游戏中")
+            return
 
         player_data = df.getUserData(uid, gid)
         gp.sendCards(player_data, plugin_event)
@@ -264,7 +251,7 @@ def unity_reply(plugin_event, Proc):
                 group_data._pass()
                 if gp.douzero_step(
                     group_data, gid, player_cards, plugin_event
-                ):  # step一定要放在所有流程之后，保存数据之前 ~~花了一天才找到这个bug~~
+                ):  # step一定要放在所有流程之后，保存数据之前
                     return  # 当游戏在AI出牌后结束，就直接退出，不然会将最后一轮出牌的游戏数据保存下来
                 gp.sendCards(player_data, plugin_event)
                 df.setGroupData(group_data, gid)
@@ -282,7 +269,8 @@ def unity_reply(plugin_event, Proc):
 
         group_data._pass()
         plugin_event.reply(f"{name}不要")
-        gp.douzero_step(group_data, gid, [], plugin_event)
+        if gp.douzero_step(group_data, gid, [], plugin_event):
+            return
 
         df.setGroupData(group_data, gid)
 
@@ -308,18 +296,59 @@ def unity_reply(plugin_event, Proc):
     elif prefix == "斗地主统计":
         pass
 
-    elif prefix == "添加人机":
+    elif prefix == "添加困难人机":
         group_data = df.getGroupData(gid)
         if gp.exclude_before_game(2, group_data, uid, plugin_event):
             return
 
-        group_data.player_list.append([0, "AI1号"])
-        group_data.ai_player = True
+        try:
+            __ = group_data.ai_player_number
+        except:
+            group_data.ai_player_number = 0
+
+        ai_data = gd.ai_data_list[0]
+        if (
+            group_data.ai_player_number == 1
+        ):  # 玩家列表中已经有个人机了，就将人机的id+1，以免重复
+            group_data.player_list.append([ai_data[0] + 1, ai_data[1]])
+            group_data.ai_player_number = 2
+        else:
+            group_data.player_list.append([ai_data[0], ai_data[1]])
+            group_data.ai_player_number = 1
+
         player_list = ""
         for player in group_data.player_list:
             player_list = player_list + "," + player[1]
         player_list = player_list[1:]
-        plugin_event.reply(f"{name}加入游戏，当前玩家列表:{player_list}")
+        plugin_event.reply(f"{ai_data[1]}加入游戏，当前玩家列表:{player_list}")
+
+        df.setGroupData(group_data, gid)
+
+    elif prefix == "添加中级人机":
+        group_data = df.getGroupData(gid)
+        if gp.exclude_before_game(2, group_data, uid, plugin_event):
+            return
+
+        try:
+            __ = group_data.ai_player_number
+        except:
+            group_data.ai_player_number = 0
+
+        ai_data = gd.ai_data_list[1]
+        if (
+            group_data.ai_player_number == 1
+        ):  # 玩家列表中已经有个人机了，就将人机的id+1，以免重复
+            group_data.player_list.append([ai_data[0] + 1, ai_data[1]])
+            group_data.ai_player_number = 2
+        else:
+            group_data.player_list.append([ai_data[0], ai_data[1]])
+            group_data.ai_player_number = 1
+
+        player_list = ""
+        for player in group_data.player_list:
+            player_list = player_list + "," + player[1]
+        player_list = player_list[1:]
+        plugin_event.reply(f"{ai_data[1]}加入游戏，当前玩家列表:{player_list}")
 
         df.setGroupData(group_data, gid)
 
@@ -328,12 +357,25 @@ def unity_reply(plugin_event, Proc):
         if gp.exclude_before_game(2, group_data, uid, plugin_event):
             return
 
-        group_data.player_list.append([0, "AI1号"])
-        group_data.ai_player = True
+        try:
+            __ = group_data.ai_player_number
+        except:
+            group_data.ai_player_number = 0
+
+        ai_data = gd.ai_data_list[2]
+        if (
+            group_data.ai_player_number == 1
+        ):  # 玩家列表中已经有个人机了，就将人机的id+1，以免重复
+            group_data.player_list.append([ai_data[0] + 1, ai_data[1]])
+            group_data.ai_player_number = 2
+        else:
+            group_data.player_list.append([ai_data[0], ai_data[1]])
+            group_data.ai_player_number = 1
+
         player_list = ""
         for player in group_data.player_list:
             player_list = player_list + "," + player[1]
         player_list = player_list[1:]
-        plugin_event.reply(f"{name}加入游戏，当前玩家列表:{player_list}")
+        plugin_event.reply(f"{ai_data[1]}加入游戏，当前玩家列表:{player_list}")
 
         df.setGroupData(group_data, gid)
