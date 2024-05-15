@@ -93,7 +93,9 @@ def unity_reply(plugin_event, Proc):
         gid = uid  # 在私聊中将QQ号作为窗口号
     name = plugin_event.data.sender["name"]
 
-    prefix = re.match("^\S+", raw_msg).group(0)
+    prefix = ""
+    if re.match("^\S+", raw_msg) != None:  # 排除掉神秘报错
+        prefix = re.match("^\S+", raw_msg).group(0)
     if prefix == "斗地主帮助":
         plugin_event.reply(help_msg)
 
