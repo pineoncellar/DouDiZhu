@@ -462,11 +462,11 @@ def ai_host_check(group_data, gid, plugin_event):
         ai_player_data = df.getUserData(group_data.next_player[0], gid)
         if check_if_get_host(ai_player_data.cards):
             setHost(group_data, ai_player_data.uid, gid, plugin_event)
-            plugin_event.reply(f"{next_player_name}成为了地主! ")
+            plugin_event.reply(f"{next_player_name}{ai_player_data.uid}成为了地主! ")
             host_card_message = "地主牌为" + " ".join(group_data.host_cards)
             plugin_event.reply(host_card_message)
         else:
-            plugin_event.reply(f"{next_player_name}不要地主")
+            plugin_event.reply(f"{next_player_name}{ai_player_data.uid}不要地主")
             if group_data.next_player == group_data.last_player:  # all refused
                 plugin_event.reply(
                     "大家都放弃了地主，地主牌为"
@@ -680,7 +680,6 @@ def check_if_get_host(cards):
         card_num = counter.get(card)
         if card_num != None and card_num > 2:
             point += card_num - 1
-    print(f"point: {point}")
     if point > 8:
         return True
     else:
@@ -708,7 +707,7 @@ def ai_play(ai_index, res, group_data, gid, plugin_event) -> bool:
             ai_player_data.sort()
             play_cards = " ".join(player_cards)
             plugin_event.reply(
-                f"{ai_player_data.name}出牌: {card_type} {play_cards} 剩余牌数{len(ai_player_data.cards)}"
+                f"{ai_player_data.name}{ai_player_data.uid}出牌: {card_type} {play_cards} 剩余牌数{len(ai_player_data.cards)}"
             )
 
             if len(ai_player_data.cards) == 0:
@@ -725,11 +724,11 @@ def ai_play(ai_index, res, group_data, gid, plugin_event) -> bool:
                 )
         else:
             plugin_event.reply(
-                f"{ai_player_data.name}出牌错误: \n{card_type}\n抱歉未能将游戏进行下去，请将此bug反馈给骰主"
+                f"{ai_player_data.name}{ai_player_data.uid}出牌错误: \n{card_type}\n抱歉未能将游戏进行下去，请将此bug反馈给骰主"
             )
     else:  # AI不要
         group_data._pass()
-        plugin_event.reply(f"{ai_player_data.name}不要")
+        plugin_event.reply(f"{ai_player_data.name}{ai_player_data.uid}不要")
 
     return False
 
