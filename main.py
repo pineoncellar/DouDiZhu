@@ -11,7 +11,7 @@
 @License   :   CC BY-NC-SA 4.0
 @Desc      :   斗地主插件主流程
 """
-version = "1.0.1"
+version = "1.1.1"
 
 import OlivOS
 import DouDiZhu.dataFiles as df
@@ -203,7 +203,7 @@ def unity_reply(plugin_event, Proc):
 
     elif prefix == "查看手牌":
         group_data = df.getGroupData(gid)
-        if group_data.process:
+        if group_data.process != None:
             pass
         else:
             return True
